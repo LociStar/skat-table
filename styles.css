@@ -176,7 +176,8 @@ body {
     z-index: 20;
     border-bottom: 1px solid rgba(255,255,255,.07);
 }
-.game-header h1 { color: var(--gold); font-size: 1.3rem; font-weight: 900; }
+.game-header h1 { color: var(--gold); font-size: 1.3rem; font-weight: 900; margin-right: auto; }
+.header-actions { display: flex; gap: 6px; }
 
 /* ── Scoreboard ────────────────────────────────────────── */
 .scoreboard {
@@ -244,17 +245,6 @@ body {
 
 /* ── Sections ──────────────────────────────────────────── */
 .section-pad { padding: 14px; }
-
-.guide-section {
-    padding-top: 10px;
-    padding-bottom: 5px;
-}
-
-@media (max-width: 480px) {
-    .guide-section {
-        padding-top: 20px;
-    }
-}
 
 /* ── Round form ────────────────────────────────────────── */
 .round-form {

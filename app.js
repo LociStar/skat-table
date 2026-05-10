@@ -443,7 +443,7 @@ function renderScoreboard() {
         let roleClass = '';
         
         if (i === state.dealerIndex) {
-            roleLabel = '🎴 Geber';
+            roleLabel = '🎴 Geben';
             roleClass = 'role-geben';
         } else if (i === (state.dealerIndex + 1) % 3) {
             roleLabel = '👂 Hören';
