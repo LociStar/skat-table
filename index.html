@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skat Rechner</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+
+    <!-- ── Setup ─────────────────────────────────────────── -->
+    <div id="setup-screen" class="screen active">
+        <div class="setup-wrap">
+            <div class="setup-logo">🃏</div>
+            <h1>Skat Rechner</h1>
+            <p class="setup-sub">Punktezettel für 3 Spieler</p>
+
+            <div class="card setup-card">
+                <div class="player-inputs">
+            <div class="input-group">
+                <label for="p1">Spieler 1</label>
+                <input id="p1" type="text" placeholder="Name" maxlength="20" value="Spieler 1">
+            </div>
+            <div class="input-group">
+                <label for="p2">Spieler 2</label>
+                <input id="p2" type="text" placeholder="Name" maxlength="20" value="Spieler 2">
+            </div>
+            <div class="input-group">
+                <label for="p3">Spieler 3</label>
+                <input id="p3" type="text" placeholder="Name" maxlength="20" value="Spieler 3">
+            </div>
+                </div>
+
+                <div class="settings-box">
+                    <span class="settings-label">Verlust-Regel:</span>
+                    <label class="radio-lbl"><input type="radio" name="loss" value="2" checked> −2× Spielwert</label>
+                    <label class="radio-lbl"><input type="radio" name="loss" value="1"> −1× Spielwert</label>
+                </div>
+
+                <button id="start-btn" class="btn-primary btn-full">Spiel starten</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Game ──────────────────────────────────────────── -->
+    <div id="game-screen" class="screen">
+
+        <header class="game-header">
+            <h1>🃏 Skat</h1>
+            <button id="reset-btn" class="btn-icon" title="Neues Spiel">↺ Neu</button>
+        </header>
+
+    <!-- Scoreboard -->
+    <div id="scoreboard" class="scoreboard">
+        <div class="score-card" id="card-p1">
+            <div class="sc-name" id="name-p1">Spieler 1</div>
+            <div class="sc-score" id="score-p1">0</div>
+        </div>
+        <div class="score-card" id="card-p2">
+            <div class="sc-name" id="name-p2">Spieler 2</div>
+            <div class="sc-score" id="score-p2">0</div>
+        </div>
+        <div class="score-card" id="card-p3">
+            <div class="sc-name" id="name-p3">Spieler 3</div>
+            <div class="sc-score" id="score-p3">0</div>
+        </div>
+    </div>
+
+    <!-- Reizhilfe-Button -->
+    <div class="section-pad" style="padding-top: 0; padding-bottom: 5px;">
+        <button id="guide-btn" class="btn-secondary btn-full" style="font-size: 0.8rem; padding: 8px;">📖 Reizhilfe anzeigen</button>
+    </div>
+
+        <!-- Add-round trigger -->
+        <div class="section-pad">
+            <button id="add-round-btn" class="btn-primary btn-full">＋ Runde eintragen</button>
+        </div>
+
+        <!-- Round form -->
+        <div id="round-form" class="round-form">
+            <div class="card form-card">
+                <h3>Runde <span id="round-num">1</span></h3>
+
+                <div class="form-row">
+                    <span class="form-lbl">Alleinspieler</span>
+                    <div class="btn-group" id="declarer-btns"></div>
+                </div>
+
+                <div class="form-row">
+                    <span class="form-lbl">Spielart</span>
+                    <div class="btn-group">
+                        <button class="tbtn active" data-g="type" data-v="suit">Farbe</button>
+                        <button class="tbtn" data-g="type" data-v="grand">Grand</button>
+                        <button class="tbtn" data-g="type" data-v="null">Null</button>
+                    </div>
+                </div>
+
+                <div class="form-row" id="row-suit">
+                    <span class="form-lbl">Farbe</span>
+                    <div class="btn-group">
+                        <button class="tbtn active" data-g="suit" data-v="clubs">♣ Kreuz</button>
+                        <button class="tbtn" data-g="suit" data-v="spades">♠ Pik</button>
+                        <button class="tbtn hearts" data-g="suit" data-v="hearts">♥ Herz</button>
+                        <button class="tbtn diamonds" data-g="suit" data-v="diamonds">♦ Karo</button>
+                    </div>
+                </div>
+
+                <div class="form-row hidden" id="row-null">
+                    <span class="form-lbl">Null-Art</span>
+                    <div class="btn-group">
+                        <button class="tbtn active" data-g="nvar" data-v="null">Null (23)</button>
+                        <button class="tbtn" data-g="nvar" data-v="null-hand">Hand (35)</button>
+                        <button class="tbtn" data-g="nvar" data-v="null-ouvert">Ouvert (46)</button>
+                        <button class="tbtn" data-g="nvar" data-v="null-ouvert-hand">Ouv.+Hand (59)</button>
+                    </div>
+                </div>
+
+                <div class="form-row" id="row-jacks">
+                    <span class="form-lbl">Buben</span>
+                    <div class="jacks-wrap">
+                        <div class="btn-group">
+                            <button class="tbtn active" data-g="jt" data-v="mit">Mit</button>
+                            <button class="tbtn" data-g="jt" data-v="ohne">Ohne</button>
+                        </div>
+                        <div class="counter">
+                            <button class="cnt-btn" id="jacks-minus">−</button>
+                            <span id="jacks-val">1</span>
+                            <button class="cnt-btn" id="jacks-plus">＋</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row" id="row-mods">
+                    <span class="form-lbl">Zusätze</span>
+                    <div class="checks">
+                        <label class="chk"><input type="checkbox" id="m-hand"><span>Hand</span></label>
+                        <label class="chk"><input type="checkbox" id="m-schneider"><span>Schneider</span></label>
+                        <label class="chk"><input type="checkbox" id="m-schneider-ang"><span>Schn. ang.</span></label>
+                        <label class="chk"><input type="checkbox" id="m-schwarz"><span>Schwarz</span></label>
+                        <label class="chk"><input type="checkbox" id="m-schwarz-ang"><span>Schw. ang.</span></label>
+                        <label class="chk"><input type="checkbox" id="m-ouvert"><span>Ouvert</span></label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <span class="form-lbl">Ergebnis</span>
+                    <div class="btn-group">
+                        <button class="tbtn tbtn-win active" data-g="result" data-v="win">Gewonnen ✓</button>
+                        <button class="tbtn tbtn-lose" data-g="result" data-v="lose">Verloren ✗</button>
+                    </div>
+                </div>
+
+                <div class="gv-preview">
+                    <span class="gv-label">Spielwert</span>
+                    <span id="gv-num" class="gv-num">0</span>
+                    <span id="gv-score" class="gv-score"></span>
+                </div>
+
+                <div class="form-actions">
+                    <button id="cancel-btn" class="btn-secondary">Abbrechen</button>
+                    <button id="confirm-btn" class="btn-primary">Eintragen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="section-pad">
+            <h2 class="history-title">Spielverlauf</h2>
+            <div id="history"></div>
+        </div>
+
+    </div>
+</div>
+
+<script src="app.js"></script>
+
+<!-- Reizhilfe Popup -->
+<div id="guide-modal" class="modal">
+    <div class="modal-content card">
+        <div class="modal-header">
+            <h3>📖 Reizhilfe (Werte)</h3>
+            <button id="close-guide" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="guide-grid">
+                <div class="guide-col">
+                    <h4>Grundwerte</h4>
+                    <ul>
+                        <li><span class="suit-icon clubs">♣</span> Kreuz: 12</li>
+                        <li><span class="suit-icon spades">♠</span> Pik: 11</li>
+                        <li><span class="suit-icon hearts">♥</span> Herz: 10</li>
+                        <li><span class="suit-icon diamonds">♦</span> Karo: 9</li>
+                        <li><strong>Grand:</strong> 24</li>
+                    </ul>
+                </div>
+                <div class="guide-col">
+                    <h4>Multiplikatoren</h4>
+                    <ul>
+                        <li>Mit/Ohne 1...4</li>
+                        <li>Spiel: +1</li>
+                        <li>Hand: +1</li>
+                        <li>Schneider: +1</li>
+                        <li>Schn. ang.: +1</li>
+                        <li>Schwarz: +1</li>
+                        <li>Schw. ang.: +1</li>
+                        <li>Ouvert: +1</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="guide-null">
+                <h4>Nullspiele</h4>
+                <div class="null-grid">
+                    <span>Null: 23</span>
+                    <span>Hand: 35</span>
+                    <span>Ouvert: 46</span>
+                    <span>Ouv. Hand: 59</span>
+                </div>
+            </div>
+            <div class="guide-reizen">
+                <h4>Reihenfolge</h4>
+                <p><strong>Geben, Hören, Sagen, Weitersagen</strong></p>
+                <ol>
+                    <li>Mittelhand reizt Vorhand (Sagen zu Hören)</li>
+                    <li>Hinterhand reizt Gewinner (Weitersagen)</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
