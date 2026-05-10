@@ -5,10 +5,11 @@
 // --- State ---
 let state = {
     players: [], // { name, score }
-    history: [], // { round, declarerIndex, gameValue, result, scoreChange, details }
+    history: [], // { round, declarerIndex, gameValue, result, scoreChange, details, formData }
     lossFactor: 2, // Default: -2x game value
     currentRound: 1,
     dealerIndex: 0, // Current dealer
+    editingRoundIndex: null, // Index in history array being edited
     ui: {
         currentScreen: 'setup-screen'
     }
@@ -33,7 +34,7 @@ const NULL_VALUES = {
 // --- DOM Elements ---
 const getEl = (id) => document.getElementById(id);
 
-let setupScreen, gameScreen, startBtn, resetBtn, addRoundBtn, roundForm, cancelBtn, confirmBtn, guideBtn, guideModal, closeGuide, scoreboard, historyList, declarerBtns, gvNum, gvScore, roundNumSpan, suitRow, nullRow, jacksRow, modsRow;
+let setupScreen, gameScreen, startBtn, resetBtn, addRoundBtn, roundForm, cancelBtn, confirmBtn, guideBtn, guideModal, closeGuide, scoreboard, historyList, declarerBtns, gvNum, gvScore, roundNumSpan, suitRow, nullRow, jacksRow, modsRow, ramschRow, ramschEyes;
 
 function initElements() {
     setupScreen = getEl('setup-screen');
@@ -58,6 +59,8 @@ function initElements() {
     nullRow = getEl('row-null');
     jacksRow = getEl('row-jacks');
     modsRow = getEl('row-mods');
+    ramschRow = getEl('row-ramsch');
+    ramschEyes = getEl('ramsch-eyes');
 }
 
 // --- Initialization ---
@@ -72,6 +75,10 @@ function init() {
     startBtn.addEventListener('click', startGame);
     resetBtn.addEventListener('click', resetGame);
     addRoundBtn.addEventListener('click', () => {
+        state.editingRoundIndex = null;
+        getEl('round-form-title').textContent = 'Runde ' + state.currentRound;
+        confirmBtn.textContent = 'Eintragen';
+        resetForm();
         roundForm.classList.add('open');
         updateGameValue();
     });
@@ -113,6 +120,11 @@ function init() {
     document.querySelectorAll('#row-mods input[type="checkbox"]').forEach(chk => {
         chk.addEventListener('change', updateGameValue);
     });
+
+    // Ramsch eyes input
+    if (ramschEyes) {
+        ramschEyes.addEventListener('input', updateGameValue);
+    }
 }
 
 function updateFormVisibility(gameType) {
@@ -121,11 +133,19 @@ function updateFormVisibility(gameType) {
         nullRow.classList.remove('hidden');
         jacksRow.classList.add('hidden');
         modsRow.classList.add('hidden');
+        ramschRow.classList.add('hidden');
+    } else if (gameType === 'ramsch') {
+        suitRow.classList.add('hidden');
+        nullRow.classList.add('hidden');
+        jacksRow.classList.add('hidden');
+        modsRow.classList.add('hidden');
+        ramschRow.classList.remove('hidden');
     } else {
         suitRow.classList.toggle('hidden', gameType === 'grand');
         nullRow.classList.add('hidden');
         jacksRow.classList.remove('hidden');
         modsRow.classList.remove('hidden');
+        ramschRow.classList.add('hidden');
     }
 }
 
@@ -179,6 +199,10 @@ function renderDeclarerBtns() {
 function calculateGameValue() {
     const type = document.querySelector('.tbtn[data-g="type"].active').dataset.v;
     
+    if (type === 'ramsch') {
+        return 0; // Ramsch uses special scoring logic in submitRound
+    }
+
     if (type === 'null') {
         const nvar = document.querySelector('.tbtn[data-g="nvar"].active').dataset.v;
         return NULL_VALUES[nvar];
@@ -202,11 +226,22 @@ function calculateGameValue() {
 }
 
 function updateGameValue() {
+    const typeBtn = document.querySelector('.tbtn[data-g="type"].active');
+    const type = typeBtn ? typeBtn.dataset.v : 'suit';
     const val = calculateGameValue();
     const resultBtn = document.querySelector('.tbtn[data-g="result"].active');
     const isWin = resultBtn ? resultBtn.dataset.v === 'win' : true;
     
-    if (gvNum) gvNum.textContent = val;
+    if (type === 'ramsch') {
+        const eyes = parseInt(ramschEyes.value) || 0;
+        if (gvNum) gvNum.textContent = eyes;
+        if (gvScore) {
+            gvScore.textContent = '-' + eyes;
+            gvScore.className = 'gv-score lose';
+        }
+        return;
+    }
+
     const change = isWin ? val : -(val * state.lossFactor);
     if (gvScore) {
         gvScore.textContent = (change > 0 ? '+' : '') + change;
@@ -227,17 +262,20 @@ function submitRound() {
     const val = calculateGameValue();
     const isWin = resultBtn.dataset.v === 'win';
     const declarerIdx = parseInt(declarerBtn.dataset.v);
-    const scoreChange = isWin ? val : -(val * state.lossFactor);
-    
-    state.players[declarerIdx].score += scoreChange;
-    
-    // Rotate dealer
-    state.dealerIndex = (state.dealerIndex + 1) % state.players.length;
-    
-    // Details for history
     const type = typeBtn.dataset.v;
+    
+    let scoreChange = isWin ? val : -(val * state.lossFactor);
     let detail = '';
-    if (type === 'null') {
+
+    if (type === 'ramsch') {
+        const points = parseInt(ramschEyes.value);
+        if (isNaN(points)) {
+            alert('Bitte die Augen des Verlierers eingeben.');
+            return;
+        }
+        scoreChange = -points;
+        detail = 'Ramsch';
+    } else if (type === 'null') {
         const nvarBtn = document.querySelector('.tbtn[data-g="nvar"].active');
         detail = nvarBtn ? nvarBtn.textContent : 'Null';
     } else {
@@ -248,14 +286,63 @@ function submitRound() {
         detail = `${suit}, ${jacksText}`;
     }
 
-    state.history.unshift({
-        round: state.currentRound++,
-        declarerName: state.players[declarerIdx].name,
-        gameValue: val,
-        result: isWin ? 'win' : 'lose',
-        scoreChange: scoreChange,
-        detail: detail
-    });
+    const formData = {
+        type,
+        suit: type === 'suit' ? document.querySelector('.tbtn[data-g="suit"].active').dataset.v : (type === 'grand' ? 'grand' : null),
+        nvar: type === 'null' ? document.querySelector('.tbtn[data-g="nvar"].active').dataset.v : null,
+        jacks: parseInt(document.getElementById('jacks-val').textContent),
+        jacksType: document.querySelector('.tbtn[data-g="jt"].active').dataset.v,
+        mods: {
+            hand: document.getElementById('m-hand').checked,
+            schneider: document.getElementById('m-schneider').checked,
+            schneiderAng: document.getElementById('m-schneider-ang').checked,
+            schwarz: document.getElementById('m-schwarz').checked,
+            schwarzAng: document.getElementById('m-schwarz-ang').checked,
+            ouvert: document.getElementById('m-ouvert').checked,
+        },
+        ramschEyes: type === 'ramsch' ? parseInt(ramschEyes.value) : null,
+        isWin: isWin
+    };
+
+    if (state.editingRoundIndex !== null) {
+        // Update existing round
+        const oldRound = state.history[state.editingRoundIndex];
+        // Reverse old score
+        state.players[oldRound.declarerIndex].score -= oldRound.scoreChange;
+        
+        // Apply new score
+        state.players[declarerIdx].score += scoreChange;
+        
+        // Update history entry
+        state.history[state.editingRoundIndex] = {
+            ...oldRound,
+            declarerIndex: declarerIdx,
+            declarerName: state.players[declarerIdx].name,
+            gameValue: type === 'ramsch' ? Math.abs(scoreChange) : val,
+            result: isWin || type === 'ramsch' ? 'win' : 'lose',
+            scoreChange: scoreChange,
+            detail: detail,
+            formData: formData
+        };
+        state.editingRoundIndex = null;
+    } else {
+        // Add new round
+        state.players[declarerIdx].score += scoreChange;
+        
+        // Rotate dealer
+        state.dealerIndex = (state.dealerIndex + 1) % state.players.length;
+        
+        state.history.unshift({
+            round: state.currentRound++,
+            declarerIndex: declarerIdx,
+            declarerName: state.players[declarerIdx].name,
+            gameValue: type === 'ramsch' ? Math.abs(scoreChange) : val,
+            result: isWin || type === 'ramsch' ? 'win' : 'lose',
+            scoreChange: scoreChange,
+            detail: detail,
+            formData: formData
+        });
+    }
     
     roundForm.classList.remove('open');
     roundNumSpan.textContent = state.currentRound;
@@ -276,6 +363,7 @@ function resetForm() {
     
     document.querySelectorAll('#row-mods input').forEach(c => c.checked = false);
     document.getElementById('jacks-val').textContent = '1';
+    if (ramschEyes) ramschEyes.value = '';
 }
 
 function renderScoreboard() {
@@ -341,7 +429,7 @@ function renderHistory() {
     }
 
     historyList.innerHTML = '';
-    state.history.forEach(h => {
+    state.history.forEach((h, index) => {
         const item = document.createElement('div');
         item.className = 'hist-item';
         item.innerHTML = `
@@ -354,9 +442,90 @@ function renderHistory() {
                 <div class="hist-sw">${h.gameValue} Pkt.</div>
                 <div class="hist-pts ${h.result}">${h.scoreChange > 0 ? '+' : ''}${h.scoreChange}</div>
             </div>
+            <div class="hist-actions">
+                <button class="btn-edit" onclick="editRound(${index})">✎</button>
+                <button class="btn-delete" onclick="deleteRound(${index})">×</button>
+            </div>
         `;
         historyList.appendChild(item);
     });
+}
+
+function deleteRound(index) {
+    if (confirm('Runde wirklich löschen?')) {
+        const h = state.history[index];
+        state.players[h.declarerIndex].score -= h.scoreChange;
+        state.history.splice(index, 1);
+        
+        // Note: We don't adjust currentRound or dealerIndex to keep history consistent
+        renderScoreboard();
+        renderHistory();
+    }
+}
+
+function editRound(index) {
+    const h = state.history[index];
+    state.editingRoundIndex = index;
+    
+    // Set Title
+    getEl('round-form-title').textContent = 'Runde ' + h.round + ' bearbeiten';
+    confirmBtn.textContent = 'Speichern';
+    
+    // Fill form
+    const fd = h.formData;
+    
+    // Declarer
+    document.querySelectorAll('.tbtn[data-g="declarer"]').forEach(b => {
+        b.classList.toggle('active', parseInt(b.dataset.v) === h.declarerIndex);
+    });
+    
+    // Type
+    document.querySelectorAll('.tbtn[data-g="type"]').forEach(b => {
+        b.classList.toggle('active', b.dataset.v === fd.type);
+    });
+    updateFormVisibility(fd.type);
+    
+    // Suit
+    if (fd.suit && fd.type === 'suit') {
+        document.querySelectorAll('.tbtn[data-g="suit"]').forEach(b => {
+            b.classList.toggle('active', b.dataset.v === fd.suit);
+        });
+    }
+    
+    // Null variant
+    if (fd.nvar && fd.type === 'null') {
+        document.querySelectorAll('.tbtn[data-g="nvar"]').forEach(b => {
+            b.classList.toggle('active', b.dataset.v === fd.nvar);
+        });
+    }
+    
+    // Jacks
+    document.getElementById('jacks-val').textContent = fd.jacks;
+    document.querySelectorAll('.tbtn[data-g="jt"]').forEach(b => {
+        b.classList.toggle('active', b.dataset.v === fd.jacksType);
+    });
+    
+    // Mods
+    document.getElementById('m-hand').checked = fd.mods.hand;
+    document.getElementById('m-schneider').checked = fd.mods.schneider;
+    document.getElementById('m-schneider-ang').checked = fd.mods.schneiderAng;
+    document.getElementById('m-schwarz').checked = fd.mods.schwarz;
+    document.getElementById('m-schwarz-ang').checked = fd.mods.schwarzAng;
+    document.getElementById('m-ouvert').checked = fd.mods.ouvert;
+    
+    // Ramsch
+    if (ramschEyes && fd.ramschEyes !== null) {
+        ramschEyes.value = fd.ramschEyes;
+    }
+    
+    // Result
+    document.querySelectorAll('.tbtn[data-g="result"]').forEach(b => {
+        const isWinVal = b.dataset.v === 'win';
+        b.classList.toggle('active', isWinVal === fd.isWin);
+    });
+    
+    roundForm.classList.add('open');
+    updateGameValue();
 }
 
 function resetGame() {

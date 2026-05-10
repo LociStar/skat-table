@@ -80,7 +80,7 @@
         <!-- Round form -->
         <div id="round-form" class="round-form">
             <div class="card form-card">
-                <h3>Runde <span id="round-num">1</span></h3>
+                <h3><span id="round-form-title">Runde <span id="round-num">1</span></span></h3>
 
                 <div class="form-row">
                     <span class="form-lbl">Alleinspieler</span>
@@ -93,6 +93,7 @@
                         <button class="tbtn active" data-g="type" data-v="suit">Farbe</button>
                         <button class="tbtn" data-g="type" data-v="grand">Grand</button>
                         <button class="tbtn" data-g="type" data-v="null">Null</button>
+                        <button class="tbtn" data-v="ramsch" data-g="type">Ramsch</button>
                     </div>
                 </div>
 
@@ -141,6 +142,11 @@
                         <label class="chk"><input type="checkbox" id="m-schwarz-ang"><span>Schw. ang.</span></label>
                         <label class="chk"><input type="checkbox" id="m-ouvert"><span>Ouvert</span></label>
                     </div>
+                </div>
+
+                <div class="form-row hidden" id="row-ramsch">
+                    <span class="form-lbl">Augen (Verlierer)</span>
+                    <input type="number" id="ramsch-eyes" class="input-field" placeholder="0" min="0" max="120">
                 </div>
 
                 <div class="form-row">
