@@ -245,6 +245,17 @@ body {
 /* ── Sections ──────────────────────────────────────────── */
 .section-pad { padding: 14px; }
 
+.guide-section {
+    padding-top: 10px;
+    padding-bottom: 5px;
+}
+
+@media (max-width: 480px) {
+    .guide-section {
+        padding-top: 20px;
+    }
+}
+
 /* ── Round form ────────────────────────────────────────── */
 .round-form {
     max-height: 0;
