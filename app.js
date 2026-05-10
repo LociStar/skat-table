@@ -15,6 +15,27 @@ let state = {
     }
 };
 
+const STORAGE_KEY = 'skat_calculator_state';
+
+function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function loadState() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        try {
+            state = JSON.parse(saved);
+            // Reset temporary UI state
+            state.editingRoundIndex = null;
+            return true;
+        } catch (e) {
+            console.error('Failed to load state', e);
+        }
+    }
+    return false;
+}
+
 // --- Constants ---
 const SUIT_VALUES = {
     clubs: 12,
@@ -70,6 +91,21 @@ function init() {
     // Basic verification to avoid null errors
     if (!startBtn || !guideBtn) {
         return;
+    }
+
+    if (loadState()) {
+        if (state.ui.currentScreen === 'game-screen') {
+            setupScreen.classList.remove('active');
+            gameScreen.classList.add('active');
+            renderDeclarerBtns();
+            renderScoreboard();
+            renderHistory();
+            roundNumSpan.textContent = state.currentRound;
+            
+            // Restore loss factor radio button
+            const lossRadio = document.querySelector(`input[name="loss"][value="${state.lossFactor}"]`);
+            if (lossRadio) lossRadio.checked = true;
+        }
     }
 
     startBtn.addEventListener('click', startGame);
@@ -171,6 +207,9 @@ function startGame() {
     
     state.lossFactor = parseInt(document.querySelector('input[name="loss"]:checked').value);
     state.dealerIndex = 0; // First player deals first
+    state.ui.currentScreen = 'game-screen';
+    
+    saveState();
     
     setupScreen.classList.remove('active');
     gameScreen.classList.add('active');
@@ -325,6 +364,7 @@ function submitRound() {
             formData: formData
         };
         state.editingRoundIndex = null;
+        saveState();
     } else {
         // Add new round
         state.players[declarerIdx].score += scoreChange;
@@ -346,6 +386,8 @@ function submitRound() {
     
     roundForm.classList.remove('open');
     roundNumSpan.textContent = state.currentRound;
+    
+    saveState();
     
     renderScoreboard();
     renderHistory();
@@ -457,6 +499,8 @@ function deleteRound(index) {
         state.players[h.declarerIndex].score -= h.scoreChange;
         state.history.splice(index, 1);
         
+        saveState();
+        
         // Note: We don't adjust currentRound or dealerIndex to keep history consistent
         renderScoreboard();
         renderHistory();
@@ -530,10 +574,12 @@ function editRound(index) {
 
 function resetGame() {
     if (confirm('Spiel wirklich zurücksetzen? Alle Daten gehen verloren.')) {
+        localStorage.removeItem(STORAGE_KEY);
         state.players = [];
         state.history = [];
         state.currentRound = 1;
         state.dealerIndex = 0;
+        state.ui.currentScreen = 'setup-screen';
         roundNumSpan.textContent = '1';
         setupScreen.classList.add('active');
         gameScreen.classList.remove('active');
